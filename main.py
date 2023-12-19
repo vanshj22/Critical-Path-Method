@@ -4,7 +4,7 @@ from tabulate import tabulate
 import textwrap
 
 def create_project_schedule():
-    # Define tasks, durations, and dependencies
+    # Define modest tasks, durations, and dependencies
     tasks = {
         "Obtain Permits": {"duration": 10, "dependencies": []},
         "Site Excavation": {"duration": 5, "dependencies": ["Obtain Permits"]},
@@ -16,7 +16,7 @@ def create_project_schedule():
         "Interior Finishing": {"duration": 20, "dependencies": ["Electrical Wiring"]},
         "Painting": {"duration": 10, "dependencies": ["Interior Finishing"]},
         "Landscaping": {"duration": 15, "dependencies": ["Roofing", "Painting"]},
-        "Final Inspection": {"duration": 10, "dependencies": ["Landscaping"]}
+        "Final Inspection": {"duration": 0, "dependencies": ["Landscaping"]}
     }
 
     return tasks
@@ -29,11 +29,24 @@ def calculate_critical_path(tasks):
         for dependency in data["dependencies"]:
             G.add_edge(dependency, task)
 
+    # Identify source and target nodes for critical path calculation
+    sources = [node for node, in_degree in G.in_degree() if in_degree == 0]
+    targets = [node for node, out_degree in G.out_degree() if out_degree == 0]
+
     # Calculate critical path using NetworkX
-    all_paths = list(nx.algorithms.simple_paths.all_simple_paths(G, source="Obtain Permits", target="Final Inspection"))
+    all_paths = []
+    for source in sources:
+        for target in targets:
+            paths = list(nx.algorithms.simple_paths.all_simple_paths(G, source=source, target=target))
+            all_paths.extend(paths)
+
+    if not all_paths:
+        return []
+
     critical_path = max(all_paths, key=lambda path: sum(tasks[task]["duration"] for task in path))
 
     return critical_path
+
 
 def visualize_project_schedule(tasks, critical_path):
     # Create a directed acyclic graph (DAG) using NetworkX for visualization
@@ -69,14 +82,14 @@ def main():
     # Print task data in tabular format
     headers = ["Task", "Duration (Days)", "Dependencies"]
     task_data = []
-
+        
     for task, data in tasks.items():
         task_data.append([task, data["duration"], ", ".join(data["dependencies"]) if data["dependencies"] else "-"])
 
     print(tabulate(task_data, headers=headers, tablefmt="grid"))
 
     print("\nCritical Path:")
-    for task in all_tasks:
+    for task in critical_path:
         print(f" - {task}")
 
     print("\nVisualizing Project Schedule:")
